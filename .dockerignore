@@ -1,0 +1,11 @@
+# Keeps the build context small and stops local state leaking into the image.
+**/node_modules
+**/dist
+**/target
+backend/data
+.git
+.env
+*.log
+.idea
+.vscode
+docs

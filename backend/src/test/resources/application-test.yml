@@ -1,0 +1,21 @@
+spring:
+  datasource:
+    url: jdbc:h2:mem:algolens-test;DB_CLOSE_DELAY=-1
+    driver-class-name: org.h2.Driver
+    username: sa
+    password: ""
+  jpa:
+    database-platform: org.hibernate.dialect.H2Dialect
+
+algolens:
+  jwt:
+    secret: test-secret-that-is-definitely-long-enough-for-hs256-abcdef
+  credits:
+    enforced: false
+  ai:
+    enabled: false
+    api-key: ""
+
+logging:
+  level:
+    com.algolens: INFO

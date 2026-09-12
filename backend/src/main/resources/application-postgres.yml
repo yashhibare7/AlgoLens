@@ -1,0 +1,12 @@
+# Production-shaped profile. Used by docker-compose and any real deployment.
+spring:
+  datasource:
+    url: ${ALGOLENS_DB_URL:jdbc:postgresql://localhost:5432/algolens}
+    username: ${ALGOLENS_DB_USER:algolens}
+    password: ${ALGOLENS_DB_PASSWORD:algolens}
+    driver-class-name: org.postgresql.Driver
+    hikari:
+      maximum-pool-size: 10
+      minimum-idle: 2
+  jpa:
+    database-platform: org.hibernate.dialect.PostgreSQLDialect

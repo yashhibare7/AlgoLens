@@ -1,0 +1,19 @@
+{
+  "permissions": {
+    "allow": [
+      "PowerShell(java -version)",
+      "PowerShell(mvn -v)",
+      "PowerShell(node -v)",
+      "PowerShell(npm -v)",
+      "PowerShell(docker --version)",
+      "Skill(claude-api)",
+      "Skill(claude-api:*)",
+      "Bash(curl -s -o /dev/null -w \"\" http://localhost:8080/api/meta/health)",
+      "Bash(curl -s -o /dev/null http://localhost:8080/api/meta/health)",
+      "Bash(break)",
+      "Bash(cd /tmp)",
+      "Bash(curl -s -o sol2.out -w \"  HTTP %{http_code}\\\\n\" -X POST http://localhost:8080/api/executions -H 'Content-Type: application/json' -d @sol.json)",
+      "Bash(node -e ' *)"
+    ]
+  }
+}

@@ -1,0 +1,47 @@
+# Render Blueprint: deploys AlgoLens as one free web service.
+#
+# Use it by pushing this repo to GitHub, then in the Render dashboard:
+#   New  ->  Blueprint  ->  pick the repo  ->  Apply
+#
+# Render reads this file, so there is nothing to configure by hand except the database URL.
+# Full walkthrough, including the free Postgres: docs/DEPLOYMENT.md
+
+services:
+  - type: web
+    name: algolens
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    plan: free
+    # Free instances sleep after 15 minutes idle. Health checks do not keep them awake, but
+    # this still gives Render a correct readiness signal on deploy.
+    healthCheckPath: /actuator/health
+    envVars:
+      - key: SPRING_PROFILES_ACTIVE
+        value: postgres
+
+      # Generated once by Render and kept across deploys. Never commit a real secret.
+      - key: ALGOLENS_JWT_SECRET
+        generateValue: true
+
+      # Paste the connection string from Neon (or any Postgres) here in the dashboard.
+      # Format: jdbc:postgresql://HOST/DB?sslmode=require
+      - key: ALGOLENS_DB_URL
+        sync: false
+      - key: ALGOLENS_DB_USER
+        sync: false
+      - key: ALGOLENS_DB_PASSWORD
+        sync: false
+
+      # Optional. Without it the AI panel uses the built-in local explainer, free of charge.
+      - key: ANTHROPIC_API_KEY
+        sync: false
+
+      # Same origin in this deployment, so CORS is not involved. Set it only if you later
+      # host the frontend separately.
+      - key: ALGOLENS_CORS_ORIGINS
+        value: ''
+
+      # Anyone can run code without an account. Turn this off if the instance gets abused --
+      # there is no rate limiting yet.
+      - key: ALGOLENS_ALLOW_ANONYMOUS_EXECUTION
+        value: 'true'

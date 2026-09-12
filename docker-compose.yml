@@ -1,0 +1,58 @@
+# Production-shaped local stack: PostgreSQL + Spring Boot + nginx-served SPA.
+#
+#   docker compose up --build
+#   open http://localhost:3000
+#
+# The browser only ever talks to nginx on :3000, which proxies /api to the backend. Same origin,
+# so CORS is not involved here at all.
+#
+# For day-to-day development you do not need any of this -- see README.md, the dev profile runs
+# the backend on file-backed H2 with no containers.
+
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: algolens
+      POSTGRES_USER: algolens
+      POSTGRES_PASSWORD: ${ALGOLENS_DB_PASSWORD:-algolens}
+    volumes:
+      - algolens-db:/var/lib/postgresql/data
+    healthcheck:
+      # The backend must not start migrating before Postgres is actually accepting queries.
+      test: ['CMD-SHELL', 'pg_isready -U algolens -d algolens']
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+
+  backend:
+    build:
+      context: ./backend
+    environment:
+      SPRING_PROFILES_ACTIVE: postgres
+      ALGOLENS_DB_URL: jdbc:postgresql://db:5432/algolens
+      ALGOLENS_DB_USER: algolens
+      ALGOLENS_DB_PASSWORD: ${ALGOLENS_DB_PASSWORD:-algolens}
+      # Must be set to something private outside local development.
+      ALGOLENS_JWT_SECRET: ${ALGOLENS_JWT_SECRET:-dev-only-insecure-secret-change-me-please-32b}
+      # Optional. Without it the AI panel uses the built-in local explainer.
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      ALGOLENS_CREDITS_ENFORCED: ${ALGOLENS_CREDITS_ENFORCED:-false}
+      ALGOLENS_CORS_ORIGINS: http://localhost:3000
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: ./frontend
+    ports:
+      - '3000:80'
+    depends_on:
+      - backend
+    restart: unless-stopped
+
+volumes:
+  algolens-db:
