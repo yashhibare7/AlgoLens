@@ -1,4 +1,4 @@
-import type { ElementState, ExecutionStatus, TraceAction } from '../types';
+import type { ElementState, ExecutionStatus, TraceAction, Verdict } from '../types';
 
 /** Renders a trace value the way the interpreter would print it. */
 export function formatValue(value: unknown): string {
@@ -159,6 +159,24 @@ export function formatRelativeTime(iso: string): string {
   }
   return new Date(then).toLocaleDateString();
 }
+
+export const VERDICT_LABELS: Record<Verdict, string> = {
+  ACCEPTED: 'Accepted',
+  WRONG_ANSWER: 'Wrong answer',
+  RUNTIME_ERROR: 'Runtime error',
+  COMPILE_ERROR: 'Syntax error',
+  TIME_LIMIT_EXCEEDED: 'Time limit exceeded',
+  INTERNAL_ERROR: 'Internal error',
+};
+
+export const VERDICT_CLASSES: Record<Verdict, string> = {
+  ACCEPTED: 'text-emerald-300 border-emerald-800 bg-emerald-950/50',
+  WRONG_ANSWER: 'text-red-300 border-red-900 bg-red-950/50',
+  RUNTIME_ERROR: 'text-red-300 border-red-900 bg-red-950/50',
+  COMPILE_ERROR: 'text-amber-300 border-amber-800 bg-amber-950/50',
+  TIME_LIMIT_EXCEEDED: 'text-orange-300 border-orange-900 bg-orange-950/50',
+  INTERNAL_ERROR: 'text-red-300 border-red-900 bg-red-950/50',
+};
 
 export const DIFFICULTY_CLASSES: Record<string, string> = {
   EASY: 'text-emerald-300 border-emerald-800',

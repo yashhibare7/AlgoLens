@@ -6,6 +6,7 @@ import Panel from '../components/Panel';
 import Tabs, { type TabDefinition } from '../components/Tabs';
 import AiPanel from '../components/visualizer/AiPanel';
 import CallStackPanel from '../components/visualizer/CallStackPanel';
+import JudgePanel from '../components/visualizer/JudgePanel';
 import JumpControls from '../components/visualizer/JumpControls';
 import MetricsPanel from '../components/visualizer/MetricsPanel';
 import OutputPanel from '../components/visualizer/OutputPanel';
@@ -18,7 +19,7 @@ import VisualizationPanel from '../components/visualizer/VisualizationPanel';
 import { usePlayer } from '../hooks/usePlayer';
 import { DEFAULT_SAMPLE } from '../lib/samples';
 import { useAuth } from '../store/AuthContext';
-import type { ExecutionTrace } from '../types';
+import type { ExecutionTrace, Problem, SubmissionResponse } from '../types';
 
 export default function VisualizerPage() {
   const { user, meta, setCreditBalance } = useAuth();
@@ -29,9 +30,12 @@ export default function VisualizerPage() {
   const [title, setTitle] = useState('Untitled');
   const [problemId, setProblemId] = useState<number | undefined>();
   const [savedCodeId, setSavedCodeId] = useState<number | undefined>();
+  const [problem, setProblem] = useState<Problem | null>(null);
 
   const [trace, setTrace] = useState<ExecutionTrace | null>(null);
   const [running, setRunning] = useState(false);
+  const [submission, setSubmission] = useState<SubmissionResponse | null>(null);
+  const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [pinnedLine, setPinnedLine] = useState<number | null>(null);
@@ -64,13 +68,15 @@ export default function VisualizerPage() {
     const load = async () => {
       try {
         if (problemSlug) {
-          const problem = await api.problems.detail(problemSlug);
-          setCode(problem.starterCode ?? DEFAULT_SAMPLE);
-          setLanguage(problem.language);
-          setTitle(problem.title);
-          setProblemId(problem.id);
+          const loaded = await api.problems.detail(problemSlug);
+          setCode(loaded.starterCode ?? DEFAULT_SAMPLE);
+          setLanguage(loaded.language);
+          setTitle(loaded.title);
+          setProblemId(loaded.id);
+          setProblem(loaded);
           setSavedCodeId(undefined);
           setTrace(null);
+          setSubmission(null);
         } else if (savedId) {
           const saved = await api.savedCode.detail(Number(savedId));
           setCode(saved.code ?? '');
@@ -78,7 +84,9 @@ export default function VisualizerPage() {
           setTitle(saved.title);
           setSavedCodeId(saved.id);
           setProblemId(saved.problemId);
+          setProblem(null);
           setTrace(null);
+          setSubmission(null);
         } else if (executionId) {
           const detail = await api.executions.detail(Number(executionId));
           setCode(detail.code);
@@ -129,6 +137,35 @@ export default function VisualizerPage() {
       setRunning(false);
     }
   }, [code, language, problemId, savedCodeId, setCreditBalance]);
+
+  const submit = useCallback(async () => {
+    if (!problem) {
+      return;
+    }
+    setSubmitting(true);
+    setError(null);
+    setNotice(null);
+    try {
+      const response = await api.problems.submit(problem.slug, code);
+      setSubmission(response);
+      if (response.creditBalance != null) {
+        setCreditBalance(response.creditBalance);
+      }
+      setActiveTab('tests');
+    } catch (caught) {
+      if (caught instanceof ApiError) {
+        setError(
+          caught.isOutOfCredits
+            ? `${caught.message} (needed ${caught.details?.required}, had ${caught.details?.available})`
+            : caught.message,
+        );
+      } else {
+        setError('Something went wrong judging that submission.');
+      }
+    } finally {
+      setSubmitting(false);
+    }
+  }, [code, problem, setCreditBalance]);
 
   const save = useCallback(async () => {
     setError(null);
@@ -251,6 +288,20 @@ export default function VisualizerPage() {
         content: <OutputPanel output={player.outputSoFar} />,
       },
       {
+        id: 'tests',
+        label: 'Tests',
+        badge: submission ? `${submission.result.passedCount}/${submission.result.totalCount}`
+          : problem?.judgeEnabled ? problem.sampleTestCases.length || undefined : undefined,
+        content: (
+          <JudgePanel
+            problem={problem}
+            submission={submission}
+            submitting={submitting}
+            onSubmit={() => void submit()}
+          />
+        ),
+      },
+      {
         id: 'stack',
         label: 'Call stack',
         badge: frameCount || undefined,
@@ -281,7 +332,7 @@ export default function VisualizerPage() {
       },
     ],
     [step, trace, code, language, player.index, player.outputSoFar, variableCount, frameCount,
-      outputLines],
+      outputLines, problem, submission, submitting, submit],
   );
 
   // ------------------------------------------------------------------ render
@@ -320,6 +371,17 @@ export default function VisualizerPage() {
             <span className="hidden text-[10px] opacity-70 sm:inline">Ctrl+Enter</span>
           </button>
 
+          {problem?.judgeEnabled && (
+            <button
+              type="button"
+              className="btn-primary"
+              onClick={() => void submit()}
+              disabled={submitting}
+            >
+              {submitting ? 'Judging...' : '✓ Submit'}
+            </button>
+          )}
+
           {user && (
             <button type="button" className="btn-ghost" onClick={() => void save()}>
               {savedCodeId ? 'Update' : 'Save'}
@@ -333,6 +395,8 @@ export default function VisualizerPage() {
               setCode(DEFAULT_SAMPLE);
               setTrace(null);
               setProblemId(undefined);
+              setProblem(null);
+              setSubmission(null);
               setSavedCodeId(undefined);
               setTitle('Untitled');
               setBreakpoints(new Set());

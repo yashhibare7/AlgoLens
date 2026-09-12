@@ -201,6 +201,12 @@ export interface AuthResponse {
 
 // ---------------------------------------------------------------- library & history
 
+export interface TestCaseSample {
+  arguments: string[];
+  expectedOutput: string;
+  explanation?: string;
+}
+
 export interface Problem {
   id: number;
   slug: string;
@@ -211,6 +217,54 @@ export interface Problem {
   language: string;
   starterCode?: string;
   solutionCode?: string;
+  judgeEnabled: boolean;
+  functionSignature?: string;
+  sampleTestCases: TestCaseSample[];
+}
+
+// ---------------------------------------------------------------- judge
+
+export type Verdict =
+  | 'ACCEPTED'
+  | 'WRONG_ANSWER'
+  | 'RUNTIME_ERROR'
+  | 'COMPILE_ERROR'
+  | 'TIME_LIMIT_EXCEEDED'
+  | 'INTERNAL_ERROR';
+
+/** `actualOutput`/`expectedOutput` are only present for sample test cases. */
+export interface TestCaseOutcome {
+  index: number;
+  sample: boolean;
+  passed: boolean;
+  actualOutput?: string;
+  expectedOutput?: string;
+  errorMessage?: string;
+}
+
+export interface JudgeResult {
+  verdict: Verdict;
+  passedCount: number;
+  totalCount: number;
+  outcomes: TestCaseOutcome[];
+  errorMessage?: string;
+  durationMs: number;
+}
+
+export interface SubmissionResponse {
+  submissionId?: number;
+  result: JudgeResult;
+  creditsSpent: number;
+  creditBalance?: number;
+}
+
+export interface SubmissionSummary {
+  id: number;
+  verdict: Verdict;
+  passedCount: number;
+  totalCount: number;
+  durationMs: number;
+  createdAt: string;
 }
 
 export interface ExecutionSummary {

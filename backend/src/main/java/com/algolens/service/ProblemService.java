@@ -1,9 +1,11 @@
 package com.algolens.service;
 
 import com.algolens.dto.problem.ProblemResponse;
+import com.algolens.dto.problem.TestCaseSampleResponse;
 import com.algolens.entity.Problem;
 import com.algolens.exception.NotFoundException;
 import com.algolens.repository.ProblemRepository;
+import com.algolens.repository.TestCaseRepository;
 import java.util.List;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -12,9 +14,11 @@ import org.springframework.transaction.annotation.Transactional;
 public class ProblemService {
 
     private final ProblemRepository problems;
+    private final TestCaseRepository testCases;
 
-    public ProblemService(ProblemRepository problems) {
+    public ProblemService(ProblemRepository problems, TestCaseRepository testCases) {
         this.problems = problems;
+        this.testCases = testCases;
     }
 
     @Transactional(readOnly = true)
@@ -27,7 +31,12 @@ public class ProblemService {
 
     @Transactional(readOnly = true)
     public ProblemResponse get(String slugOrId, boolean includeSolution) {
-        return ProblemResponse.detail(find(slugOrId), includeSolution);
+        Problem problem = find(slugOrId);
+        List<TestCaseSampleResponse> samples = problem.isJudgeEnabled()
+                ? testCases.findByProblemIdAndSampleTrueOrderByDisplayOrderAsc(problem.getId())
+                        .stream().map(TestCaseSampleResponse::from).toList()
+                : List.of();
+        return ProblemResponse.detail(problem, includeSolution, samples);
     }
 
     @Transactional(readOnly = true)

@@ -13,6 +13,8 @@ import type {
   PageResponse,
   Problem,
   SavedCode,
+  SubmissionResponse,
+  SubmissionSummary,
   User,
 } from '../types';
 
@@ -175,6 +177,10 @@ export const api = {
       get<Problem[]>(category ? `/problems?category=${encodeURIComponent(category)}` : '/problems'),
     detail: (slugOrId: string, includeSolution = false) =>
       get<Problem>(`/problems/${slugOrId}?includeSolution=${includeSolution}`),
+    submit: (slug: string, code: string) =>
+      post<SubmissionResponse>(`/problems/${slug}/submit`, { code }),
+    submissions: (slug: string) =>
+      get<SubmissionSummary[]>(`/problems/${slug}/submissions`),
   },
 
   savedCode: {

@@ -68,9 +68,17 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/api/auth/register", "/api/auth/login").permitAll()
                         .requestMatchers("/api/meta/**").permitAll()
+                        // Must precede the broad GET permitAll below: submission history is
+                        // per-user and must not be reachable anonymously.
+                        .requestMatchers(HttpMethod.GET, "/api/problems/*/submissions")
+                        .authenticated()
                         .requestMatchers(HttpMethod.GET, "/api/problems", "/api/problems/**")
                         .permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/executions").permitAll()
+                        // Same shape as executions: JudgeService itself decides whether an
+                        // anonymous submission is actually allowed, from the same
+                        // algolens.execution.allow-anonymous flag.
+                        .requestMatchers(HttpMethod.POST, "/api/problems/*/submit").permitAll()
                         .requestMatchers("/actuator/health", "/actuator/info").permitAll()
                         .requestMatchers("/swagger-ui.html", "/swagger-ui/**", "/v3/api-docs",
                                 "/v3/api-docs/**")

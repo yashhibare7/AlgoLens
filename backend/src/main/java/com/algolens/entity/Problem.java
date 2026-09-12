@@ -1,15 +1,22 @@
 package com.algolens.entity;
 
+import jakarta.persistence.CollectionTable;
 import jakarta.persistence.Column;
+import jakarta.persistence.ElementCollection;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EntityListeners;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
+import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.OrderColumn;
 import jakarta.persistence.Table;
 import java.time.Instant;
+import java.util.ArrayList;
+import java.util.List;
 import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 
@@ -51,6 +58,32 @@ public class Problem {
     @Column(name = "display_order", nullable = false)
     private int displayOrder;
 
+    // ------------------------------------------------------------------ judge (all nullable)
+    //
+    // A problem supports automated pass/fail judging only when methodName is set. The existing
+    // "run and watch" problems above leave these null: judging is opt-in per problem, not a
+    // replacement for the step visualizer.
+
+    @Column(name = "class_name", length = 64)
+    private String className;
+
+    @Column(name = "method_name", length = 64)
+    private String methodName;
+
+    @Column(name = "method_static", nullable = false)
+    private boolean methodStatic;
+
+    @Column(name = "return_type", length = 64)
+    private String returnType;
+
+    // Eager: small, and always needed whenever a judge-enabled problem is loaded -- lazy would
+    // mean a LazyInitializationException the moment a DTO built from this crosses the
+    // transaction boundary, since `open-in-view` is off.
+    @ElementCollection(fetch = FetchType.EAGER)
+    @CollectionTable(name = "problem_parameters", joinColumns = @JoinColumn(name = "problem_id"))
+    @OrderColumn(name = "position")
+    private List<ParamSpec> parameters = new ArrayList<>();
+
     @CreatedDate
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;
@@ -70,6 +103,61 @@ public class Problem {
         this.starterCode = starterCode;
         this.solutionCode = solutionCode;
         this.displayOrder = displayOrder;
+    }
+
+    /**
+     * Declares the method a submission must implement, turning on the test-case judge for this
+     * problem. Returns {@code this} so it chains onto the constructor call in seed data.
+     */
+    public Problem withJudge(String className, String methodName, boolean methodStatic,
+            String returnType, List<ParamSpec> parameters) {
+        this.className = className;
+        this.methodName = methodName;
+        this.methodStatic = methodStatic;
+        this.returnType = returnType;
+        this.parameters = new ArrayList<>(parameters);
+        return this;
+    }
+
+    public boolean isJudgeEnabled() {
+        return methodName != null;
+    }
+
+    public String getClassName() {
+        return className;
+    }
+
+    public String getMethodName() {
+        return methodName;
+    }
+
+    public boolean isMethodStatic() {
+        return methodStatic;
+    }
+
+    public String getReturnType() {
+        return returnType;
+    }
+
+    /** A snapshot copy -- see {@code TestCase.getArguments} for why this must not be a view. */
+    public List<ParamSpec> getParameters() {
+        return List.copyOf(parameters);
+    }
+
+    /** A human-readable signature for display, e.g. {@code int[] twoSum(int[] nums, int target)}. */
+    public String functionSignature() {
+        if (!isJudgeEnabled()) {
+            return null;
+        }
+        StringBuilder sb = new StringBuilder(returnType).append(' ').append(methodName).append('(');
+        for (int i = 0; i < parameters.size(); i++) {
+            if (i > 0) {
+                sb.append(", ");
+            }
+            ParamSpec p = parameters.get(i);
+            sb.append(p.type()).append(' ').append(p.name());
+        }
+        return sb.append(')').toString();
     }
 
     public Long getId() {

@@ -2,10 +2,14 @@ package com.algolens.config;
 
 import com.algolens.entity.Difficulty;
 import com.algolens.entity.Language;
+import com.algolens.entity.ParamSpec;
 import com.algolens.entity.Problem;
+import com.algolens.entity.TestCase;
 import com.algolens.repository.ProblemRepository;
+import com.algolens.repository.TestCaseRepository;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.boot.ApplicationArguments;
@@ -31,9 +35,11 @@ public class ProblemSeeder implements ApplicationRunner {
     private static final Logger log = LoggerFactory.getLogger(ProblemSeeder.class);
 
     private final ProblemRepository problems;
+    private final TestCaseRepository testCases;
 
-    public ProblemSeeder(ProblemRepository problems) {
+    public ProblemSeeder(ProblemRepository problems, TestCaseRepository testCases) {
         this.problems = problems;
+        this.testCases = testCases;
     }
 
     @Override
@@ -44,6 +50,44 @@ public class ProblemSeeder implements ApplicationRunner {
         }
         List<Problem> seeded = problems.saveAll(library());
         log.info("Seeded {} starter problems", seeded.size());
+
+        Map<String, Problem> bySlug = new java.util.HashMap<>();
+        for (Problem problem : seeded) {
+            bySlug.put(problem.getSlug(), problem);
+        }
+        List<TestCase> judgeCases = new ArrayList<>();
+        judgeCases.addAll(twoSumTestCases(bySlug.get("two-sum")));
+        judgeCases.addAll(validParenthesesTestCases(bySlug.get("valid-parentheses")));
+        testCases.saveAll(judgeCases);
+        log.info("Seeded {} judge test cases", judgeCases.size());
+    }
+
+    /** Test cases for the "Two Sum" judge problem. Package-visible so tests can reuse them. */
+    static List<TestCase> twoSumTestCases(Problem problem) {
+        int order = 0;
+        return List.of(
+                new TestCase(problem, List.of("{2, 7, 11, 15}", "9"), "[0, 1]", true,
+                        "nums[0] + nums[1] == 2 + 7 == 9", order++),
+                new TestCase(problem, List.of("{3, 2, 4}", "6"), "[1, 2]", true,
+                        "nums[1] + nums[2] == 2 + 4 == 6", order++),
+                new TestCase(problem, List.of("{3, 3}", "6"), "[0, 1]", false, null, order++),
+                new TestCase(problem, List.of("{1, 5, 3, 7, 9, 2}", "10"), "[2, 3]", false, null,
+                        order++));
+    }
+
+    /** Test cases for the "Valid Parentheses" judge problem. Package-visible for tests. */
+    static List<TestCase> validParenthesesTestCases(Problem problem) {
+        int order = 0;
+        return List.of(
+                new TestCase(problem, List.of("\"()\""), "true", true,
+                        "A single matched pair.", order++),
+                new TestCase(problem, List.of("\"()[]{}\""), "true", true,
+                        "Several matched pairs in a row.", order++),
+                new TestCase(problem, List.of("\"(]\""), "false", true,
+                        "'(' is closed by ']', which does not match.", order++),
+                new TestCase(problem, List.of("\"([)]\""), "false", false, null, order++),
+                new TestCase(problem, List.of("\"{[]}\""), "true", false, null, order++),
+                new TestCase(problem, List.of("\"(\""), "false", false, null, order++));
     }
 
     /** The starter library. Order here is the order shown in the UI. */
@@ -686,6 +730,94 @@ public class ProblemSeeder implements ApplicationRunner {
                 }
                 """,
                 null, order++));
+
+        library.add(new Problem("two-sum", "Two Sum",
+                """
+                Given an array of integers `nums` and an integer `target`, return the indices of
+                the two numbers that add up to `target`. Exactly one solution exists, and you may
+                not use the same element twice.
+
+                This is a **judge problem**: implement `twoSum` in the `Solution` class below and
+                press Submit to run it against the test cases, hidden ones included -- the classic
+                LeetCode flow, alongside the step visualizer for when you want to see the
+                one-pass hash map trick play out.
+                """,
+                Difficulty.EASY, "Hashing", Language.JAVA,
+                """
+                class Solution {
+                    public int[] twoSum(int[] nums, int target) {
+                        // Write your solution here.
+                        return new int[] {-1, -1};
+                    }
+                }
+                """,
+                """
+                class Solution {
+                    public int[] twoSum(int[] nums, int target) {
+                        Map<Integer, Integer> seen = new HashMap<>();
+                        for (int i = 0; i < nums.length; i++) {
+                            int complement = target - nums[i];
+                            if (seen.containsKey(complement)) {
+                                return new int[] {seen.get(complement), i};
+                            }
+                            seen.put(nums[i], i);
+                        }
+                        return new int[] {-1, -1};
+                    }
+                }
+                """,
+                order++).withJudge("Solution", "twoSum", false, "int[]",
+                        List.of(new ParamSpec("int[]", "nums"), new ParamSpec("int", "target"))));
+
+        library.add(new Problem("valid-parentheses", "Valid Parentheses",
+                """
+                Given a string containing just the characters `(`, `)`, `{`, `}`, `[` and `]`,
+                decide whether every bracket is closed in the right order.
+
+                Another **judge problem**: implement `isValid` below and press Submit. The
+                reference solution is a single `Stack`, which is exactly what the visualizer's
+                stack renderer (a "top" marker on the last element) is built to show -- run it
+                first to watch the stack grow and shrink, then submit once you trust it.
+                """,
+                Difficulty.EASY, "Stacks", Language.JAVA,
+                """
+                class Solution {
+                    public boolean isValid(String s) {
+                        // Write your solution here.
+                        return false;
+                    }
+                }
+                """,
+                """
+                class Solution {
+                    public boolean isValid(String s) {
+                        Stack<Character> stack = new Stack<>();
+                        int size = 0;
+                        for (int i = 0; i < s.length(); i++) {
+                            char c = s.charAt(i);
+                            if (c == '(' || c == '[' || c == '{') {
+                                stack.push(c);
+                                size = size + 1;
+                            } else {
+                                if (size == 0) {
+                                    return false;
+                                }
+                                char top = stack.pop();
+                                size = size - 1;
+                                boolean mismatch = (c == ')' && top != '(')
+                                        || (c == ']' && top != '[')
+                                        || (c == '}' && top != '{');
+                                if (mismatch) {
+                                    return false;
+                                }
+                            }
+                        }
+                        return size == 0;
+                    }
+                }
+                """,
+                order++).withJudge("Solution", "isValid", false, "boolean",
+                        List.of(new ParamSpec("String", "s"))));
 
         return library;
     }

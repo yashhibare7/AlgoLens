@@ -13,6 +13,7 @@ public enum CreditTransactionType {
     ADMIN_ADJUSTMENT(true),
 
     CODE_EXECUTION(false),
+    CODE_SUBMISSION(false),
     AI_EXPLANATION(false),
     AI_ANALYSIS(false);
 

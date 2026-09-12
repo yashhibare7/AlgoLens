@@ -27,6 +27,14 @@ class ProblemLibraryTest {
     @MethodSource("library")
     @DisplayName("every seeded problem's starter code executes without error")
     void starterCodeRuns(Problem problem) {
+        // Judge-enabled problems ship an intentionally unfinished stub (no entry point) --
+        // that's the point, the user completes it before Run or Submit does anything. Their
+        // solutionCode is validated separately, harnessed with real test cases, by
+        // JudgeSeedSolutionsTest.
+        if (problem.isJudgeEnabled()) {
+            return;
+        }
+
         assertThat(problem.getStarterCode())
                 .as("problem '%s' has no starter code", problem.getSlug())
                 .isNotBlank();
